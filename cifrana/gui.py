@@ -7,6 +7,7 @@ uma thread separada; a interface é atualizada por uma fila de mensagens.
 
 from __future__ import annotations
 
+import bisect
 import json
 import os
 import queue
@@ -19,7 +20,7 @@ from pathlib import Path
 
 try:
     import tkinter as tk
-    from tkinter import filedialog, messagebox, ttk
+    from tkinter import filedialog, font as tkfont, messagebox, ttk
 except ImportError as exc:  # pragma: no cover - depende do ambiente
     raise SystemExit(
         "A interface gráfica precisa do Tkinter.\n"
@@ -27,13 +28,13 @@ except ImportError as exc:  # pragma: no cover - depende do ambiente
         "    sudo apt install python3-tk\n"
     ) from exc
 
-from . import __version__
-from .chordpro import song_to_chordpro
-from .exporter import build_filename, make_zip, write_song
+from . import __version__, highlight
+from .convert import Options, fetch_and_render
+from .exporter import make_zip, safe_filename, write_song
 from .fetcher import Fetcher, FetchError
-from .parser import ParseError, parse_artist_page, parse_print_page
+from .parser import ParseError, parse_artist_page
 from .search import SearchError, SearchResult, search
-from .urls import InvalidURL, artist_slug, artist_url, print_url, song_url
+from .urls import InvalidURL, artist_slug, artist_url, song_url
 
 APP_NAME = "Cifrana"
 SUBTITLE = "Cifras do CifraClub prontas para o SongbookPro"
@@ -49,11 +50,25 @@ TRANSPOSE_VALUES = [f"{n:+d}" if n else "0" for n in range(-11, 12)]
 
 @dataclass
 class QueueItem:
-    """Uma música esperando para ser exportada."""
+    """Uma música esperando para ser exportada.
+
+    Enquanto ``content`` for ``None``, a cifra ainda será baixada e convertida
+    na hora de exportar. Depois de aberta no editor, ``content`` guarda o texto
+    ChordPro — editado ou não — e é ele que vai para o arquivo.
+    """
 
     label: str
     artist: str
     url: str
+    content: str | None = None
+    filename: str | None = None
+    edited: bool = False
+
+    @property
+    def state_label(self) -> str:
+        if self.edited:
+            return "editada"
+        return "revisada" if self.content else ""
 
 
 class CifranaApp:
@@ -62,6 +77,7 @@ class CifranaApp:
         self.messages: queue.Queue = queue.Queue()
         self.results: list[SearchResult] = []
         self.items: list[QueueItem] = []
+        self.editors: dict[str, "EditorCifra"] = {}
         self.busy = False
         self.last_out_dir = Path(DEFAULT_OUT)
 
@@ -174,15 +190,22 @@ class CifranaApp:
 
     def _build_queue(self, parent: ttk.Frame) -> None:
         box = ttk.LabelFrame(parent, text=" 3. Fila de exportação ", padding=8)
+        self.queue_box = box
         box.grid(row=0, column=2, sticky="nsew")
         box.columnconfigure(0, weight=1)
         box.rowconfigure(0, weight=1)
 
-        tree = ttk.Treeview(box, columns=("item",), show="headings", selectmode="extended", height=11)
+        tree = ttk.Treeview(
+            box, columns=("item", "estado"), show="headings", selectmode="extended", height=11
+        )
         tree.heading("item", text="Música")
-        tree.column("item", width=240, anchor="w")
+        tree.heading("estado", text="")
+        tree.column("item", width=190, anchor="w")
+        tree.column("estado", width=70, anchor="e", stretch=False)
         tree.grid(row=0, column=0, sticky="nsew")
         tree.bind("<Delete>", lambda _e: self.remove_selected())
+        tree.bind("<Double-1>", lambda _e: self.open_editor())
+        tree.tag_configure("editada", foreground="#1a5fb4")
 
         scroll = ttk.Scrollbar(box, orient="vertical", command=tree.yview)
         scroll.grid(row=0, column=1, sticky="ns")
@@ -191,12 +214,13 @@ class CifranaApp:
 
         buttons = ttk.Frame(box)
         buttons.grid(row=1, column=0, columnspan=2, sticky="ew", pady=(8, 0))
+        self.edit_button = ttk.Button(buttons, text="Ver / editar", command=self.open_editor)
+        self.edit_button.pack(side="left")
         self.remove_button = ttk.Button(buttons, text="Remover", command=self.remove_selected)
-        self.remove_button.pack(side="left")
-        self.clear_button = ttk.Button(buttons, text="Limpar fila", command=self.clear_queue)
-        self.clear_button.pack(side="left", padx=6)
-        self.queue_label = ttk.Label(buttons, text="vazia", style="Sub.TLabel")
-        self.queue_label.pack(side="right", padx=(6, 0))
+        self.remove_button.pack(side="left", padx=6)
+        self.clear_button = ttk.Button(buttons, text="Limpar", command=self.clear_queue)
+        self.clear_button.pack(side="left")
+
 
     def _build_options(self, parent: ttk.Frame) -> None:
         box = ttk.LabelFrame(parent, text=" 4. Onde salvar e como ", padding=10)
@@ -345,6 +369,7 @@ class CifranaApp:
             self.search_button,
             self.add_button,
             self.add_all_button,
+            self.edit_button,
             self.remove_button,
             self.clear_button,
             self.choose_button,
@@ -354,10 +379,21 @@ class CifranaApp:
         if not self.busy and not self.items:
             self.export_button.configure(state="disabled")
         total = len(self.items)
-        self.queue_label.configure(text="vazia" if not total else f"{total} na fila")
+        quantidade = "vazia" if not total else f"{total} música{'s' if total > 1 else ''}"
+        self.queue_box.configure(text=f" 3. Fila de exportação — {quantidade} ")
 
     def _fetcher(self, delay: float = 1.0) -> Fetcher:
         return Fetcher(cache_dir=CACHE_DIR, delay=delay)
+
+    def _options(self) -> Options:
+        """As escolhas atuais da janela, do jeito que a conversão espera."""
+
+        return Options(
+            transpose=int(self.transpose_var.get() or 0),
+            chorus=self.chorus_var.get(),
+            tabs=self.tabs_var.get(),
+            source=self.source_var.get(),
+        )
 
     # -- busca ---------------------------------------------------------
     def do_search(self) -> None:
@@ -460,7 +496,7 @@ class CifranaApp:
                 continue
             known.add(item.url)
             self.items.append(item)
-            self.queue_tree.insert("", "end", iid=item.url, values=(item.label,))
+            self.queue_tree.insert("", "end", iid=item.url, values=(item.label, ""))
             added += 1
         if added:
             self._on_status(f"{added} música(s) adicionada(s) à fila.")
@@ -478,6 +514,90 @@ class CifranaApp:
         self.queue_tree.delete(*self.queue_tree.get_children())
         self.items.clear()
         self._refresh_buttons()
+
+    # -- editor --------------------------------------------------------
+    def open_editor(self) -> None:
+        if self.busy:
+            return
+        selecionadas = self.queue_tree.selection()
+        if not selecionadas:
+            self._on_status("Selecione uma música da fila para ver ou editar.")
+            return
+
+        item = next((i for i in self.items if i.url == selecionadas[0]), None)
+        if item is None:
+            return
+        if item.content is not None:
+            self._mostrar_editor(item)
+            return
+
+        self._on_status(f"Baixando {item.label} para edição…")
+        self._run(self._preview_worker, item)
+
+    def _preview_worker(self, item: QueueItem) -> None:
+        try:
+            convertida = fetch_and_render(item.url, self._fetcher(delay=0.5), self._options())
+        except (FetchError, ParseError, InvalidURL) as exc:
+            self._post("error", f"Não consegui abrir {item.label}: {exc}")
+            return
+        self._post("editor", (item, convertida))
+
+    def _on_editor(self, payload) -> None:
+        item, convertida = payload
+        item.content = convertida.content
+        item.filename = convertida.filename
+        self.refresh_item(item)
+        self._on_status(f"{item.label} pronta para revisão.")
+        self._mostrar_editor(item)
+
+    def _mostrar_editor(self, item: QueueItem) -> None:
+        janela = self.editors.get(item.url)
+        if janela is not None and janela.winfo_exists():
+            janela.lift()
+            janela.focus_set()
+            return
+        self.editors[item.url] = EditorCifra(self, item)
+
+    def refresh_item(self, item: QueueItem) -> None:
+        """Reflete na fila o estado atual de uma música."""
+
+        if self.queue_tree.exists(item.url):
+            self.queue_tree.item(
+                item.url,
+                values=(item.label, item.state_label),
+                tags=("editada",) if item.edited else (),
+            )
+
+    def recarregar_item(self, item: QueueItem) -> None:
+        """Joga fora o texto atual e baixa a cifra de novo."""
+
+        item.content = None
+        item.filename = None
+        item.edited = False
+        self.refresh_item(item)
+        self._on_status(f"Recarregando {item.label}…")
+        self._run(self._reload_worker, item)
+
+    def _reload_worker(self, item: QueueItem) -> None:
+        try:
+            convertida = fetch_and_render(
+                item.url, self._fetcher(delay=0.5), self._options()
+            )
+        except (FetchError, ParseError, InvalidURL) as exc:
+            self._post("error", f"Não consegui recarregar {item.label}: {exc}")
+            return
+        self._post("reloaded", (item, convertida))
+
+    def _on_reloaded(self, payload) -> None:
+        item, convertida = payload
+        item.content = convertida.content
+        item.filename = convertida.filename
+        item.edited = False
+        self.refresh_item(item)
+        janela = self.editors.get(item.url)
+        if janela is not None and janela.winfo_exists():
+            janela.substituir_texto(convertida.content, convertida.filename)
+        self._on_status(f"{item.label} recarregada do site.")
 
     # -- pasta ---------------------------------------------------------
     def choose_folder(self) -> None:
@@ -505,19 +625,16 @@ class CifranaApp:
         if self.busy or not self.items:
             return
         out_dir = Path(self.out_var.get() or DEFAULT_OUT).expanduser()
-        settings = {
-            "transpose": int(self.transpose_var.get() or 0),
-            "chorus": self.chorus_var.get(),
-            "tabs": self.tabs_var.get(),
-            "source": self.source_var.get(),
-            "zip": self.zip_var.get(),
-        }
         self._save_config()
         self.progress.configure(value=0, maximum=len(self.items))
         self._on_log(f"— exportando {len(self.items)} música(s) para {out_dir}")
-        self._run(self._export_worker, list(self.items), out_dir, settings)
+        self._run(
+            self._export_worker, list(self.items), out_dir, self._options(), self.zip_var.get()
+        )
 
-    def _export_worker(self, items: list[QueueItem], out_dir: Path, settings: dict) -> None:
+    def _export_worker(
+        self, items: list[QueueItem], out_dir: Path, options: Options, fazer_zip: bool
+    ) -> None:
         fetcher = self._fetcher(delay=1.0)
         written: list[Path] = []
         failures = 0
@@ -525,25 +642,24 @@ class CifranaApp:
         for index, item in enumerate(items, start=1):
             self._post("status", f"[{index}/{len(items)}] {item.label}")
             try:
-                page = fetcher.get(print_url(item.url))
-                song = parse_print_page(page, url=item.url)
-                content = song_to_chordpro(
-                    song,
-                    transpose=settings["transpose"],
-                    chorus_directives=settings["chorus"],
-                    keep_tabs=settings["tabs"],
-                    source=settings["source"],
-                )
-                filename = build_filename(song)
+                if item.content is not None:
+                    # já revisada no editor: vai exatamente como está na tela
+                    content = item.content
+                    filename = item.filename or safe_filename(item.label) + options.ext
+                else:
+                    convertida = fetch_and_render(item.url, fetcher, options)
+                    content, filename = convertida.content, convertida.filename
+
                 path = write_song(content, out_dir, filename)
                 written.append(path)
-                self._post("log", f"  ✓ {path.name}")
+                marca = " (editada)" if item.edited else ""
+                self._post("log", f"  ✓ {path.name}{marca}")
             except (FetchError, ParseError, InvalidURL) as exc:
                 failures += 1
                 self._post("log", f"  ✗ {item.label}: {exc}")
             self._post("progress", (index, len(items)))
 
-        if settings["zip"] and written:
+        if fazer_zip and written:
             zip_path = make_zip(written, out_dir / "cifras.zip")
             self._post("log", f"  ✓ {zip_path.name} ({len(written)} arquivos)")
 
@@ -587,6 +703,200 @@ class CifranaApp:
     def _on_close(self) -> None:
         self._save_config()
         self.root.destroy()
+
+
+class EditorCifra(tk.Toplevel):
+    """Janela para conferir e ajustar a cifra antes de exportar.
+
+    O texto é o próprio ChordPro que sairá no arquivo: o que estiver aqui na
+    hora de salvar é exatamente o que o SongbookPro vai receber.
+    """
+
+    def __init__(self, app: "CifranaApp", item: QueueItem) -> None:
+        super().__init__(app.root)
+        self.app = app
+        self.item = item
+        self._agendado: str | None = None
+        self._original = item.content or ""
+        self._salvo = self._original
+        self._nome_salvo = item.filename or ""
+
+        self.title(f"Cifra — {item.label}")
+        self.geometry("880x760")
+        self.minsize(620, 460)
+
+        self._build()
+        self.substituir_texto(self._original, self._nome_salvo)
+
+        self.protocol("WM_DELETE_WINDOW", self.fechar)
+        self.bind("<Control-s>", lambda _e: (self.salvar(), "break")[1])
+
+    # -- montagem ------------------------------------------------------
+    def _build(self) -> None:
+        outer = ttk.Frame(self, padding=10)
+        outer.pack(fill="both", expand=True)
+        outer.columnconfigure(0, weight=1)
+        outer.rowconfigure(2, weight=1)
+
+        ttk.Label(outer, text=self.item.label, style="Titulo.TLabel").grid(
+            row=0, column=0, sticky="w"
+        )
+
+        linha = ttk.Frame(outer)
+        linha.grid(row=1, column=0, sticky="ew", pady=(8, 10))
+        linha.columnconfigure(1, weight=1)
+        ttk.Label(linha, text="Arquivo:").grid(row=0, column=0)
+        self.file_var = tk.StringVar()
+        entrada = ttk.Entry(linha, textvariable=self.file_var)
+        entrada.grid(row=0, column=1, sticky="ew", padx=8)
+        entrada.bind("<KeyRelease>", lambda _e: self._atualizar_status())
+
+        quadro = ttk.Frame(outer)
+        quadro.grid(row=2, column=0, sticky="nsew")
+        quadro.columnconfigure(0, weight=1)
+        quadro.rowconfigure(0, weight=1)
+
+        base = tkfont.nametofont("TkFixedFont")
+        fonte = tkfont.Font(family=base.cget("family"), size=11)
+        self.text = tk.Text(
+            quadro, wrap="none", undo=True, font=fonte, padx=8, pady=6, spacing1=1
+        )
+        self.text.grid(row=0, column=0, sticky="nsew")
+
+        vertical = ttk.Scrollbar(quadro, orient="vertical", command=self.text.yview)
+        vertical.grid(row=0, column=1, sticky="ns")
+        horizontal = ttk.Scrollbar(quadro, orient="horizontal", command=self.text.xview)
+        horizontal.grid(row=1, column=0, sticky="ew")
+        self.text.configure(yscrollcommand=vertical.set, xscrollcommand=horizontal.set)
+
+        negrito = tkfont.Font(family=base.cget("family"), size=11, weight="bold")
+        self.text.tag_configure(highlight.DIRETIVA, foreground="#1a5fb4")
+        self.text.tag_configure(highlight.ACORDE, foreground="#a51d2d", font=negrito)
+        self.text.tag_configure(highlight.TABLATURA, foreground="#5a5a5a")
+        self.text.bind("<KeyRelease>", self._ao_digitar)
+
+        ttk.Label(
+            outer,
+            text=(
+                "Acordes entre [colchetes] e diretivas entre {chaves} são o que o "
+                "SongbookPro entende. Ctrl+Z desfaz, Ctrl+S salva."
+            ),
+            style="Sub.TLabel",
+            wraplength=820,
+            justify="left",
+        ).grid(row=3, column=0, sticky="w", pady=(8, 0))
+
+        rodape = ttk.Frame(outer)
+        rodape.grid(row=4, column=0, sticky="ew", pady=(10, 0))
+        ttk.Button(rodape, text="Salvar", style="Acao.TButton", command=self.salvar).pack(
+            side="left"
+        )
+        ttk.Button(rodape, text="Recarregar do site", command=self.recarregar).pack(
+            side="left", padx=8
+        )
+        ttk.Button(rodape, text="Fechar", command=self.fechar).pack(side="left")
+        self.status = ttk.Label(rodape, text="", style="Sub.TLabel")
+        self.status.pack(side="right")
+
+    # -- conteúdo ------------------------------------------------------
+    def texto_atual(self) -> str:
+        return self.text.get("1.0", "end-1c")
+
+    def substituir_texto(self, conteudo: str, nome: str) -> None:
+        self.text.delete("1.0", "end")
+        self.text.insert("1.0", conteudo)
+        self.text.edit_reset()
+        self.text.mark_set("insert", "1.0")
+        self.file_var.set(nome)
+        self._original = conteudo
+        self._salvo = conteudo
+        self._nome_salvo = nome
+        self._destacar()
+        self._atualizar_status()
+
+    @property
+    def alterado(self) -> bool:
+        """Há mudanças ainda não salvas nesta janela?"""
+
+        return self.texto_atual() != self._salvo or self.file_var.get().strip() != self._nome_salvo
+
+    # -- destaque ------------------------------------------------------
+    def _ao_digitar(self, _event=None) -> None:
+        if self._agendado is not None:
+            self.after_cancel(self._agendado)
+        self._agendado = self.after(250, self._redestacar)
+
+    def _redestacar(self) -> None:
+        self._agendado = None
+        self._destacar()
+        self._atualizar_status()
+
+    def _destacar(self) -> None:
+        texto = self.texto_atual()
+        for marcador in (highlight.DIRETIVA, highlight.ACORDE, highlight.TABLATURA):
+            self.text.tag_remove(marcador, "1.0", "end")
+
+        # deslocamento absoluto -> índice "linha.coluna" do Tk
+        inicios = [0]
+        for linha in texto.splitlines(keepends=True):
+            inicios.append(inicios[-1] + len(linha))
+
+        def indice(posicao: int) -> str:
+            numero = bisect.bisect_right(inicios, posicao) - 1
+            return f"{numero + 1}.{posicao - inicios[numero]}"
+
+        for marcador, inicio, fim in highlight.spans(texto):
+            self.text.tag_add(marcador, indice(inicio), indice(fim))
+
+    def _atualizar_status(self) -> None:
+        if self.alterado:
+            self.status.configure(text="alterações não salvas")
+        elif self.item.edited:
+            self.status.configure(text="editada — vai assim para o arquivo")
+        else:
+            self.status.configure(text="igual ao site")
+
+    # -- ações ---------------------------------------------------------
+    def salvar(self) -> None:
+        nome = safe_filename(self.file_var.get().strip() or self.item.label)
+        if not nome.lower().endswith((".cho", ".chopro", ".chordpro", ".pro", ".crd", ".txt")):
+            nome += ".cho"
+        self.file_var.set(nome)
+
+        texto = self.texto_atual()
+        self.item.content = texto
+        self.item.filename = nome
+        self.item.edited = texto != self._original
+        self._salvo = texto
+        self._nome_salvo = nome
+
+        self.app.refresh_item(self.item)
+        self.app._on_status(f"{self.item.label}: alterações guardadas para a exportação.")
+        self._atualizar_status()
+
+    def recarregar(self) -> None:
+        if self.alterado and not messagebox.askyesno(
+            APP_NAME,
+            "Baixar a cifra de novo e descartar o que você mudou aqui?",
+            parent=self,
+        ):
+            return
+        self.app.recarregar_item(self.item)
+
+    def fechar(self) -> None:
+        if self.alterado:
+            resposta = messagebox.askyesnocancel(
+                APP_NAME,
+                "Salvar as alterações antes de fechar?",
+                parent=self,
+            )
+            if resposta is None:
+                return
+            if resposta:
+                self.salvar()
+        self.app.editors.pop(self.item.url, None)
+        self.destroy()
+
 
 
 def main(argv: list[str] | None = None) -> int:

@@ -1,3 +1,12 @@
+cifrana (0.2.0) stable; urgency=low
+
+  * Editor de cifras: conferir e ajustar o ChordPro antes de exportar,
+    com destaque de acordes, diretivas e tablaturas.
+  * A fila marca as musicas ja revisadas e as editadas.
+  * Musicas editadas sao exportadas exatamente como estao na tela.
+
+ -- Elvis Ricardo de Souza <elvisricardodesouza2@gmail.com>  Sun, 30 Aug 2026 13:50:00 -0300
+
 cifrana (0.1.0) stable; urgency=low
 
   * Primeira versao.

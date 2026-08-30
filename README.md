@@ -78,12 +78,35 @@ No Windows e no macOS o Tkinter já vem junto com o Python oficial.
 2. **Adicione** à fila — dois cliques em uma música, ou selecione várias.
    Clicando num resultado de artista (em azul) ele lista as músicas daquele
    artista.
-3. **Escolha a pasta** e as opções: tablaturas, marcação de refrão, transposição
+3. **Confira e ajuste**, se quiser: selecione a música na fila e clique em
+   **Ver / editar** (ou dê dois cliques nela).
+4. **Escolha a pasta** e as opções: tablaturas, marcação de refrão, transposição
    em semitons e, se quiser, um `.zip` no fim.
-4. **Baixar e exportar.** O progresso e os erros aparecem no registro embaixo.
+5. **Baixar e exportar.** O progresso e os erros aparecem no registro embaixo.
 
 As preferências ficam salvas em `~/.config/cifrana/config.json`, então na
 próxima vez já abre do jeito que você deixou.
+
+### O editor
+
+![O editor de cifras](docs/editor.png)
+
+O que você vê é exatamente o arquivo que o SongbookPro vai receber. O texto é
+colorido para você se achar: **diretivas** entre chaves em azul, **acordes**
+entre colchetes em vermelho, e o miolo das **tablaturas** em cinza.
+
+Dá para corrigir um acorde errado, apagar uma tablatura que você não usa,
+renomear o arquivo, acrescentar um `{comment: ...}` com uma anotação sua — o
+que precisar. `Ctrl+Z` desfaz e `Ctrl+S` salva.
+
+- **Salvar** guarda o texto para a exportação (ainda não grava em disco — isso
+  acontece no *Baixar e exportar*).
+- **Recarregar do site** joga fora suas mudanças e baixa a cifra de novo.
+
+Uma música editada aparece marcada como **editada** na fila e é exportada
+exatamente como está na tela. Isso significa que, se você mudar *Transpor* ou
+as caixas de opção depois de editar, **essas opções não são reaplicadas** nela
+— o seu texto tem a palavra final. Para voltar atrás, use *Recarregar do site*.
 
 ## Usando o terminal
 

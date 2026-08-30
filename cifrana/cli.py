@@ -5,16 +5,14 @@ from __future__ import annotations
 import argparse
 import logging
 import sys
-from dataclasses import replace
 from pathlib import Path
 
 from . import __version__
-from .chordpro import song_to_chordpro
-from .chords import transpose_key
-from .exporter import DEFAULT_EXT, build_filename, make_zip, write_song
+from .convert import Options, fetch_and_render
+from .exporter import DEFAULT_EXT, make_zip, write_song
 from .fetcher import Fetcher, FetchError
-from .parser import ParseError, parse_artist_page, parse_print_page
-from .urls import InvalidURL, artist_slug, artist_url, print_url, song_url
+from .parser import ParseError, parse_artist_page
+from .urls import InvalidURL, artist_slug, artist_url, song_url
 
 log = logging.getLogger("cifrana")
 
@@ -211,20 +209,17 @@ def collect_urls(args: argparse.Namespace, fetcher: Fetcher) -> list[str]:
 def convert_one(url: str, args: argparse.Namespace, fetcher: Fetcher) -> tuple[str, str]:
     """Baixa e converte uma cifra. Devolve ``(nome_do_arquivo, conteudo)``."""
 
-    page = fetcher.get(print_url(url))
-    song = parse_print_page(page, url=url)
-    content = song_to_chordpro(
-        song,
+    options = Options(
         transpose=args.transpor,
-        chorus_directives=args.refrao,
-        keep_tabs=not args.sem_tabs,
+        chorus=args.refrao,
+        tabs=not args.sem_tabs,
         source=not args.sem_fonte,
+        name_template=args.nome,
+        ext=args.ext,
+        ascii_only=args.ascii,
     )
-    if args.transpor:
-        # o nome do arquivo deve refletir o tom realmente exportado
-        song = replace(song, key=transpose_key(song.key, args.transpor))
-    filename = build_filename(song, args.nome, args.ext, args.ascii)
-    return filename, content
+    convertida = fetch_and_render(url, fetcher, options)
+    return convertida.filename, convertida.content
 
 
 def main(argv: list[str] | None = None) -> int:
