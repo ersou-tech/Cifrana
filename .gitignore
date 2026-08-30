@@ -1,0 +1,15 @@
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+.venv/
+venv/
+
+# saídas e cache da própria ferramenta
+/cifras/
+.cifrana-cache/
+*.cho
+*.chopro
+*.pro
+*.zip

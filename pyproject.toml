@@ -1,0 +1,25 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "cifrana"
+version = "0.1.0"
+description = "Baixa cifras do CifraClub e exporta em ChordPro para o SongbookPro"
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "MIT" }
+keywords = ["cifraclub", "songbookpro", "chordpro", "cifra", "acordes"]
+classifiers = [
+  "Programming Language :: Python :: 3",
+  "Environment :: Console",
+  "Natural Language :: Portuguese (Brazilian)",
+  "Topic :: Multimedia :: Sound/Audio",
+]
+dependencies = []
+
+[project.scripts]
+cifrana = "cifrana.cli:main"
+
+[tool.setuptools]
+packages = ["cifrana"]
