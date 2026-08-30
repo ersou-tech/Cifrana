@@ -33,11 +33,29 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           TAG: ${{ github.ref_name }}
         run: |
+          cat > notas.md <<'EOF'
+          ## Instalar no Linux Mint / Ubuntu
+
+          Baixe o `.deb` aqui embaixo e clique duas vezes nele — o Instalador de
+          Pacotes abre e você só confirma. Pelo terminal dá na mesma:
+
+          ```bash
+          sudo apt install ./cifrana_*.deb
+          ```
+
+          O `apt` puxa o `python3-tk` sozinho. Depois é só procurar por
+          **Cifrana** no menu iniciar.
+
+          Para desinstalar: `sudo apt remove cifrana`.
+
+          ## Outros sistemas
+
+          O código é Python puro (3.9+), sem dependências além da biblioteca
+          padrão: `python3 -m cifrana --gui` abre a interface e
+          `python3 -m cifrana --help` mostra as opções de terminal.
+          EOF
+
           gh release create "$TAG" dist/*.deb \
             --title "Cifrana $TAG" \
-            --notes "Baixe o .deb abaixo e instale com dois cliques (GDebi) ou com:
-
-              sudo apt install ./cifrana_*.deb
-
-            Depois procure por **Cifrana** no menu, ou use \`cifrana --help\` no terminal." \
+            --notes-file notas.md \
             || gh release upload "$TAG" dist/*.deb --clobber

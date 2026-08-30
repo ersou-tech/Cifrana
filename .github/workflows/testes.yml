@@ -35,7 +35,8 @@ jobs:
           sudo apt-get install -y ./dist/cifrana_*.deb
           cifrana --version
           cifrana --help > /dev/null
-          python3 -c "import cifrana.gui" # a GUI importa com o python3-tk da dependência
+          # fora do repositório, para importar o pacote instalado e não o local
+          cd /tmp && python3 -c "import cifrana.gui; print('GUI importa com o python3-tk da dependência')"
 
       - uses: actions/upload-artifact@v4
         with:
