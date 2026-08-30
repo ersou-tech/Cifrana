@@ -61,9 +61,36 @@ jobs:
           bash packaging/build-apt-repo.sh debs site
           ls -l site
 
+      # O token do Actions consegue publicar no Pages, mas não consegue criar
+      # o site. Sem esta checagem a falha vira um "Resource not accessible by
+      # integration", que não diz o que fazer.
+      - name: Conferir se o GitHub Pages está ligado
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh api "repos/$GITHUB_REPOSITORY/pages" >/dev/null 2>&1; then
+            echo "GitHub Pages ligado."
+            exit 0
+          fi
+          cat >&2 <<'AJUDA'
+
+          ===================================================================
+           O GitHub Pages ainda não está ligado neste repositório.
+
+           Ligue uma vez, pela interface do GitHub:
+
+             Settings > Pages > Build and deployment
+             Source: GitHub Actions
+
+           Depois rode este workflow de novo (Actions > repositorio-apt >
+           Run workflow). Não é preciso escolher branch nem pasta: quem
+           publica é este workflow.
+          ===================================================================
+
+          AJUDA
+          exit 1
+
       - uses: actions/configure-pages@v5
-        with:
-          enablement: true
 
       - uses: actions/upload-pages-artifact@v3
         with:
