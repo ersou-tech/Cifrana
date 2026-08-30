@@ -12,8 +12,8 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
-  pages: write
+  contents: write   # publica o repositório no branch "apt"
+  pages: write      # e também no Pages, quando estiver ligado
   id-token: write
 
 # uma publicação por vez, sem cancelar a que já está em andamento
@@ -56,50 +56,52 @@ jobs:
       - name: Montar o repositório
         env:
           CHAVE_GPG: ${{ steps.chave.outputs.impressao }}
-          URL_BASE: ${{ format('https://{0}.github.io/{1}', github.repository_owner, github.event.repository.name) }}
+          URL_BASE: ${{ format('https://raw.githubusercontent.com/{0}/apt', github.repository) }}
         run: |
           bash packaging/build-apt-repo.sh debs site
           ls -l site
 
-      # O token do Actions consegue publicar no Pages, mas não consegue criar
-      # o site. Sem esta checagem a falha vira um "Resource not accessible by
-      # integration", que não diz o que fazer.
-      - name: Conferir se o GitHub Pages está ligado
+      # Publicação principal: um branch órfão só com os arquivos gerados.
+      # O raw.githubusercontent serve esse branch por HTTPS, e é dele que o
+      # apt lê — assim o repositório funciona sem depender do GitHub Pages,
+      # que o token do Actions não consegue ligar sozinho.
+      - name: Publicar no branch apt
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cd site
+          git init -q -b apt
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -q -m "Repositório APT — $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          # sempre um commit só: o branch guarda o estado atual, não histórico
+          git push -q --force \
+            "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" apt
+          echo "publicado em https://raw.githubusercontent.com/${GITHUB_REPOSITORY}/apt/"
+
+      # O Pages é um extra: dá uma URL mais bonita e uma página de instruções.
+      # O token não consegue criá-lo, então aqui ele é opcional.
+      - name: O GitHub Pages está ligado?
+        id: pages
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           if gh api "repos/$GITHUB_REPOSITORY/pages" >/dev/null 2>&1; then
-            echo "GitHub Pages ligado."
-            exit 0
+            echo "ligado=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "ligado=false" >> "$GITHUB_OUTPUT"
+            echo "Pages desligado — publicando só no branch apt."
+            echo "Para ligar: Settings > Pages > Source: GitHub Actions."
           fi
-          cat >&2 <<'AJUDA'
-
-          ===================================================================
-           O GitHub Pages ainda não está ligado neste repositório.
-
-           Ligue uma vez, pela interface do GitHub:
-
-             Settings > Pages > Build and deployment
-             Source: GitHub Actions
-
-           Depois rode este workflow de novo (Actions > repositorio-apt >
-           Run workflow). Não é preciso escolher branch nem pasta: quem
-           publica é este workflow.
-          ===================================================================
-
-          AJUDA
-          exit 1
 
       - uses: actions/configure-pages@v5
+        if: steps.pages.outputs.ligado == 'true'
 
       - uses: actions/upload-pages-artifact@v3
+        if: steps.pages.outputs.ligado == 'true'
         with:
           path: site
 
-      - id: deploy
-        uses: actions/deploy-pages@v4
-
-      - name: Onde ficou
-        run: |
-          echo "Repositório publicado em ${{ steps.deploy.outputs.page_url }}"
-          echo "Instruções de instalação na mesma página."
+      - uses: actions/deploy-pages@v4
+        if: steps.pages.outputs.ligado == 'true'

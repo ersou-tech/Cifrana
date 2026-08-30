@@ -39,7 +39,7 @@ Se você quer que o Cifrana seja atualizado junto com o resto do sistema, em vez
 de baixar um `.deb` a cada versão, adicione o repositório APT:
 
 ```bash
-echo "deb [trusted=yes] https://ersou-tech.github.io/Cifrana ./" | sudo tee /etc/apt/sources.list.d/cifrana.list
+echo "deb [trusted=yes] https://raw.githubusercontent.com/ersou-tech/Cifrana/apt/ ./" | sudo tee /etc/apt/sources.list.d/cifrana.list
 sudo apt update
 sudo apt install cifrana
 ```
@@ -47,8 +47,9 @@ sudo apt install cifrana
 Pronto. A partir daí toda versão nova aparece no **Gerenciador de
 Atualizações**, junto com as atualizações do Mint.
 
-A [própria página do repositório](https://ersou-tech.github.io/Cifrana) traz
-essas instruções sempre atualizadas e a lista de versões disponíveis.
+O repositório vive no branch `apt`, publicado pelo workflow `repositorio-apt`
+a cada release e servido por HTTPS pelo `raw.githubusercontent.com`. Não
+depende do GitHub Pages estar ligado.
 
 > O `[trusted=yes]` diz ao apt para aceitar os pacotes sem verificar
 > assinatura. Para assinar o repositório e trocar isso por `signed-by`, rode
