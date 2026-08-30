@@ -12,50 +12,52 @@ nenhum) e também um comando de terminal, para quem quiser baixar em lote.
 
 ## Instalar no Linux Mint
 
-### Jeito mais fácil: o pacote `.deb`
+O repositório é **privado**, então o jeito mais direto é baixar o ZIP pelo
+navegador (você já está logado no GitHub) — não precisa de git nem de token.
 
-1. Baixe o `cifrana_*.deb` mais recente na
-   [página de releases](https://github.com/ersou-tech/Cifrana/releases).
-2. Clique duas vezes no arquivo — o **Instalador de Pacotes** do Mint abre e
-   você só confirma.
+### 1. Baixe e instale
 
-Pelo terminal dá na mesma:
-
-```bash
-sudo apt install ./cifrana_0.1.0_all.deb
-```
-
-O `apt` já puxa o `python3-tk` sozinho. Depois é só procurar por **Cifrana**
-no menu iniciar.
-
-Para desinstalar:
+1. Abra <https://github.com/ersou-tech/Cifrana>.
+2. Botão verde **Code** → **Download ZIP**.
+3. Extraia o arquivo (dois cliques → *Extrair aqui*).
+4. Abra o terminal dentro da pasta extraída — no Nemo, clique com o botão
+   direito em qualquer espaço vazio e escolha **Abrir num terminal**.
+5. Rode:
 
 ```bash
-sudo apt remove cifrana
+bash install.sh
 ```
 
-### Sem root, direto do código
+Só isso. Ele instala em `~/.local`, cria o atalho no menu e, se o Tkinter
+estiver faltando, pergunta se pode instalar para você.
+
+Depois é só procurar por **Cifrana** no menu iniciar. Para remover:
+`bash install.sh --remover`.
+
+> Use `bash install.sh`, e não `./install.sh` — arquivos vindos de um ZIP às
+> vezes perdem a permissão de execução.
+
+### 2. Se preferir um pacote `.deb` do sistema
+
+Na mesma pasta extraída:
+
+```bash
+bash packaging/build-deb.sh
+sudo apt install ./dist/cifrana_0.1.0_all.deb
+```
+
+O `apt` puxa o `python3-tk` sozinho. Para desinstalar: `sudo apt remove cifrana`.
+
+> Se o `apt` disser **"Arquivo sem suporte ... fornecido na linha de comando"**,
+> é porque o arquivo não está onde você mandou instalar. Confira com
+> `ls -l dist/*.deb` antes.
+
+### 3. Com git, se você usa token de acesso
 
 ```bash
 git clone https://github.com/ersou-tech/Cifrana.git
 cd Cifrana
-./install.sh
-```
-
-Instala em `~/.local`, cria o atalho no menu e os comandos `cifrana` e
-`cifrana-gui`. Para remover: `./install.sh --remover`.
-
-Se a interface reclamar do Tkinter:
-
-```bash
-sudo apt install python3-tk
-```
-
-### Montando o `.deb` você mesmo
-
-```bash
-./packaging/build-deb.sh          # gera dist/cifrana_0.1.0_all.deb
-sudo apt install ./dist/cifrana_*.deb
+bash install.sh
 ```
 
 ### Outros sistemas
@@ -69,6 +71,13 @@ python3 -m cifrana --help    # terminal
 ```
 
 No Windows e no macOS o Tkinter já vem junto com o Python oficial.
+
+### Sobre as releases
+
+Ainda não há release publicada. Quando houver uma tag `v*`, o workflow
+`.github/workflows/release.yml` monta o `.deb` e o anexa à
+[página de releases](https://github.com/ersou-tech/Cifrana/releases) —
+aí passa a dar para baixar o pacote pronto, sem montar nada.
 
 ---
 

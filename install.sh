@@ -41,8 +41,22 @@ if [ "$VERSAO_OK" != "1" ]; then
 fi
 
 if ! python3 -c 'import tkinter' >/dev/null 2>&1; then
-    echo "aviso: o Tkinter nao esta instalado — a interface grafica nao vai abrir."
-    echo "       instale com:  sudo apt install python3-tk"
+    echo "O Tkinter nao esta instalado — sem ele a interface grafica nao abre."
+    if [ -t 0 ] && command -v apt >/dev/null 2>&1; then
+        printf "Instalar agora com 'sudo apt install python3-tk'? [S/n] "
+        read -r resposta
+        case "$resposta" in
+            [Nn]*)
+                echo ":: seguindo sem a interface grafica (o comando de terminal funciona)"
+                ;;
+            *)
+                sudo apt install -y python3-tk \
+                    || echo ":: nao consegui instalar; rode depois: sudo apt install python3-tk"
+                ;;
+        esac
+    else
+        echo "   instale com:  sudo apt install python3-tk"
+    fi
     echo
 fi
 
