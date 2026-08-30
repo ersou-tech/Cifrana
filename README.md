@@ -146,13 +146,19 @@ próxima vez já abre do jeito que você deixou.
 
 ![O editor de cifras](docs/editor.png)
 
-O que você vê é exatamente o arquivo que o SongbookPro vai receber. O texto é
-colorido para você se achar: **diretivas** entre chaves em azul, **acordes**
-entre colchetes em vermelho, e o miolo das **tablaturas** em cinza.
+Duas abas:
 
-Dá para corrigir um acorde errado, apagar uma tablatura que você não usa,
-renomear o arquivo, acrescentar um `{comment: ...}` com uma anotação sua — o
-que precisar. `Ctrl+Z` desfaz e `Ctrl+S` salva.
+**Prévia** — a cifra como ela fica no SongbookPro: os acordes alinhados **acima
+da letra**, na sílaba certa, com as seções destacadas e as tablaturas
+desenhadas. É a aba que abre primeiro, para conferir o resultado.
+
+**Texto (ChordPro)** — o arquivo de verdade, com os acordes entre `[colchetes]`
+e as diretivas entre `{chaves}`. É aqui que se edita: corrigir um acorde errado,
+apagar uma tablatura que você não usa, acrescentar um `{comment: ...}` com uma
+anotação sua. `Ctrl+Z` desfaz e `Ctrl+S` salva, e a Prévia acompanha o que você
+digita.
+
+Dá para renomear o arquivo no campo de cima.
 
 - **Salvar** guarda o texto para a exportação (ainda não grava em disco — isso
   acontece no *Baixar e exportar*).
