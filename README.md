@@ -80,6 +80,31 @@ Sem git, dá para baixar o ZIP pelo site (botão verde **Code** →
 > Use `bash install.sh`, e não `./install.sh` — arquivos vindos de um ZIP às
 > vezes perdem a permissão de execução.
 
+### Se o programa abrir numa versão diferente da instalada
+
+Instalar com `install.sh` **e** com o `.deb` ao mesmo tempo cria dois atalhos
+de menu chamados `cifrana.desktop`. Pelo padrão XDG, o do usuário substitui o
+do sistema por inteiro — então o menu abre a cópia de `~/.local`, e ela não
+muda quando o apt atualiza o pacote.
+
+Para ver o que existe na máquina:
+
+```bash
+bash packaging/diagnostico.sh
+```
+
+Ele lista os lançadores, os atalhos de menu, cada cópia do código com sua
+versão e qual delas o Python realmente carrega. Não altera nada.
+
+Para ficar só com a do sistema:
+
+```bash
+rm -f ~/.local/bin/cifrana ~/.local/bin/cifrana-gui
+rm -rf ~/.local/lib/cifrana
+rm -f ~/.local/share/applications/cifrana.desktop
+update-desktop-database ~/.local/share/applications 2>/dev/null
+```
+
 ### Montando o `.deb` você mesmo
 
 ```bash

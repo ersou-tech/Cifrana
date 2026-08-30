@@ -60,6 +60,36 @@ if ! python3 -c 'import tkinter' >/dev/null 2>&1; then
     echo
 fi
 
+# ---- conflito com o pacote do sistema ---------------------------------
+# Os dois atalhos se chamam cifrana.desktop e, pelo padrão XDG, o do usuário
+# substitui o do sistema por inteiro. Instalar aqui por cima de um pacote .deb
+# faz o menu abrir esta cópia e ignorar a do sistema — inclusive quando o apt
+# atualizar o pacote, o que deixa o programa "preso" numa versão antiga.
+# "-W" sozinho não serve: um pacote removido sem purge continua no banco do
+# dpkg (estado config-files) e faria o aviso disparar à toa.
+if [ "$(dpkg-query -W -f='${db:Status-Status}' cifrana 2>/dev/null)" = "installed" ]; then
+    VERSAO_DEB="$(dpkg-query -W -f='${Version}' cifrana 2>/dev/null)"
+    echo "Atenção: o pacote cifrana $VERSAO_DEB já está instalado no sistema."
+    echo
+    echo "  Instalar aqui em $PREFIXO faz o menu abrir ESTA cópia e ignorar a"
+    echo "  do sistema — inclusive depois que o apt atualizar o pacote."
+    echo
+    echo "  Se você quer o que o apt instalou, não precisa deste script:"
+    echo "  o programa já está no menu."
+    echo
+    if [ -t 0 ]; then
+        printf "Instalar assim mesmo? [s/N] "
+        read -r resposta
+        case "$resposta" in
+            [Ss]*) echo ;;
+            *) echo ":: cancelado"; exit 0 ;;
+        esac
+    else
+        echo ":: cancelado (rode com um terminal interativo para confirmar)"
+        exit 0
+    fi
+fi
+
 # ---- instala ----------------------------------------------------------
 echo ":: instalando em $PREFIXO"
 rm -rf "$LIB"
