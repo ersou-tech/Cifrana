@@ -16,3 +16,6 @@ venv/
 
 # pacotes gerados
 /dist/
+
+# repositório APT gerado localmente
+/site/

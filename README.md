@@ -33,6 +33,35 @@ menu iniciar. Para desinstalar: `sudo apt remove cifrana`.
 > comando. Confira com `ls -l *.deb` antes — normalmente ele foi parar em
 > `~/Downloads`.
 
+### Atualizar pelo Gerenciador de Atualizações do Mint
+
+Se você quer que o Cifrana seja atualizado junto com o resto do sistema, em vez
+de baixar um `.deb` a cada versão, adicione o repositório APT:
+
+```bash
+echo "deb [trusted=yes] https://ersou-tech.github.io/Cifrana ./" | sudo tee /etc/apt/sources.list.d/cifrana.list
+sudo apt update
+sudo apt install cifrana
+```
+
+Pronto. A partir daí toda versão nova aparece no **Gerenciador de
+Atualizações**, junto com as atualizações do Mint.
+
+A [própria página do repositório](https://ersou-tech.github.io/Cifrana) traz
+essas instruções sempre atualizadas e a lista de versões disponíveis.
+
+> O `[trusted=yes]` diz ao apt para aceitar os pacotes sem verificar
+> assinatura. Para assinar o repositório e trocar isso por `signed-by`, rode
+> `bash packaging/criar-chave-apt.sh` e guarde a chave no segredo
+> `APT_GPG_KEY` do repositório — o script explica o passo a passo.
+
+Para deixar de usar o repositório:
+
+```bash
+sudo rm /etc/apt/sources.list.d/cifrana.list
+sudo apt update
+```
+
 ### Direto do código, sem root
 
 ```bash
