@@ -1,0 +1,23 @@
+Architectures: all
+Components: main
+Date: Sun, 30 Aug 2026 18:00:19 +0000
+Description: Cifras do CifraClub para o SongbookPro
+Label: Cifrana
+Origin: Cifrana
+Suite: stable
+MD5Sum:
+ 938493bbfe4639ab3f3acbc97803e6e2             3824 Packages
+ d858ac9e2fbbc4d1ffba4095efefbe58              983 Packages.gz
+ 5678517ec82dbcf845cc08bb815f3478              171 Release
+SHA1:
+ 91a6eafd9e69bb9403d978a956820ab9819b4344             3824 Packages
+ c44a766d43406a4f7f3d1c4c6c7f09f7638b0e1d              983 Packages.gz
+ e36c4221199ada50910a72d79e4333c184cbd5c2              171 Release
+SHA256:
+ e09d54d991695b4090f66ed03f0f01ce56f70eaf1f85e25bff62ecf466c6a88a             3824 Packages
+ db9ccc1b68045440f864ce03360889c32a47df34c0109f0031d61ce7f5743e82              983 Packages.gz
+ 25682de9c9e62aa5d989bb61bb69f768e99de546d72bf146be4d7954399d3ea3              171 Release
+SHA512:
+ 25f96bd1da43f14761b0086eaae051ff20bad692241afdb8180ec2cf4891fbd30e83841ce9fb41e40314ba8525d2420a8fafd363301f6ced9ac40f55136cd7cd             3824 Packages
+ fd53a11e0d59d9e796d19297e2d1aba356b1e9269cc5c29347efd4c2e9bb0d735e98e901f57a25684b754c85be1cd5d62e43a880d96cd265cd89f60a6975a5f4              983 Packages.gz
+ 9ce8aac7d1c2c18e6e42f5750aa7e0f53691de0eae6be58fd976a6d738ee55c604bdda114fe2e005a8a1fc7c48ade2c717f3c6f3f37b93c0cb8177ed1a6a602d              171 Release

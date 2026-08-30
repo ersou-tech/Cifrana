@@ -1,0 +1,100 @@
+Package: cifrana
+Version: 0.1.0
+Architecture: all
+Maintainer: Elvis Ricardo de Souza <elvisricardodesouza2@gmail.com>
+Installed-Size: 204
+Depends: python3 (>= 3.9), python3-tk
+Filename: ./cifrana_0.1.0_all.deb
+Size: 25572
+MD5sum: d8c466cd2441d80b7b424073557b710e
+SHA1: 2c72a24e66aa8f332fea610e2ccfef642c5aa6bf
+SHA256: 7f0869595700c04af33298866b8103e2471f9d7413123453ec2431c3ca575e09
+Section: sound
+Priority: optional
+Homepage: https://github.com/ersou-tech/Cifrana
+Description: Cifras do CifraClub prontas para o SongbookPro
+ O Cifrana baixa cifras do CifraClub e as exporta em ChordPro, formato que o
+ SongbookPro importa nativamente.
+ .
+ O CifraClub escreve os acordes numa linha acima da letra; o SongbookPro os
+ espera embutidos na propria linha. A conversao e posicional, entao cada
+ acorde cai exatamente na silaba certa.
+ .
+ Traz interface grafica com busca integrada (nao e preciso copiar links) e
+ tambem um comando de terminal para uso em lote.
+
+Package: cifrana
+Version: 0.2.0
+Architecture: all
+Maintainer: Elvis Ricardo de Souza <elvisricardodesouza2@gmail.com>
+Installed-Size: 228
+Depends: python3 (>= 3.9), python3-tk
+Filename: ./cifrana_0.2.0_all.deb
+Size: 29512
+MD5sum: c2204f06da8aeb9daca2603aacf3e032
+SHA1: ef3193549177c9c612873aba95b9f340ae736cef
+SHA256: 387ecdb52dc9b8254476bcb2f0bb657650fe604356293fcc3fa003c59acfa5c2
+Section: sound
+Priority: optional
+Homepage: https://github.com/ersou-tech/Cifrana
+Description: Cifras do CifraClub prontas para o SongbookPro
+ O Cifrana baixa cifras do CifraClub e as exporta em ChordPro, formato que o
+ SongbookPro importa nativamente.
+ .
+ O CifraClub escreve os acordes numa linha acima da letra; o SongbookPro os
+ espera embutidos na propria linha. A conversao e posicional, entao cada
+ acorde cai exatamente na silaba certa.
+ .
+ Traz interface grafica com busca integrada (nao e preciso copiar links) e
+ tambem um comando de terminal para uso em lote.
+
+Package: cifrana
+Version: 0.3.0
+Architecture: all
+Maintainer: Elvis Ricardo de Souza <elvisricardodesouza2@gmail.com>
+Installed-Size: 240
+Depends: python3 (>= 3.9), python3-tk
+Filename: ./cifrana_0.3.0_all.deb
+Size: 32408
+MD5sum: 667b345bcb896aa28d4b562f8a4ed6ae
+SHA1: 0c3bd6285669ad6d7ee99b241d0bf5c01cfbbd4f
+SHA256: 6aa1a7ee58b7c87babe3ed450990c02065555ddf33716086cbd1f08c3f9520e9
+Section: sound
+Priority: optional
+Homepage: https://github.com/ersou-tech/Cifrana
+Description: Cifras do CifraClub prontas para o SongbookPro
+ O Cifrana baixa cifras do CifraClub e as exporta em ChordPro, formato que o
+ SongbookPro importa nativamente.
+ .
+ O CifraClub escreve os acordes numa linha acima da letra; o SongbookPro os
+ espera embutidos na propria linha. A conversao e posicional, entao cada
+ acorde cai exatamente na silaba certa.
+ .
+ Traz interface grafica com busca integrada (nao e preciso copiar links) e
+ tambem um comando de terminal para uso em lote.
+
+Package: cifrana
+Version: 0.4.0
+Architecture: all
+Maintainer: Elvis Ricardo de Souza <elvisricardodesouza2@gmail.com>
+Installed-Size: 252
+Depends: python3 (>= 3.9), python3-tk
+Filename: ./cifrana_0.4.0_all.deb
+Size: 34918
+MD5sum: 2fdd8f42f3dc59142699abae987c206f
+SHA1: b6dd717e83e836f5f3f7995fde2a0c2580bdc705
+SHA256: 1dbaaa39e1c6ea6a7ca08cbc01cc4b10d7022ce55f2e0ff4625ac80b9fb58214
+Section: sound
+Priority: optional
+Homepage: https://github.com/ersou-tech/Cifrana
+Description: Cifras do CifraClub prontas para o SongbookPro
+ O Cifrana baixa cifras do CifraClub e as exporta em ChordPro, formato que o
+ SongbookPro importa nativamente.
+ .
+ O CifraClub escreve os acordes numa linha acima da letra; o SongbookPro os
+ espera embutidos na propria linha. A conversao e posicional, entao cada
+ acorde cai exatamente na silaba certa.
+ .
+ Traz interface grafica com busca integrada (nao e preciso copiar links) e
+ tambem um comando de terminal para uso em lote.
+
