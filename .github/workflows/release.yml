@@ -1,11 +1,18 @@
 name: release
 
-# Publica o .deb quando uma tag "v..." é enviada:
-#     git tag v0.1.0 && git push origin v0.1.0
+# Publica o .deb de duas formas:
+#   - enviando uma tag:  git tag v0.1.0 && git push origin v0.1.0
+#   - ou pela aba Actions > release > Run workflow, informando a versão
+#     (nesse caso a tag é criada no commit atual, pelo próprio workflow)
 on:
   push:
     tags: ["v*"]
   workflow_dispatch:
+    inputs:
+      versao:
+        description: "Versão a publicar, com o v na frente (ex.: v0.1.0)"
+        required: true
+        default: "v0.1.0"
 
 permissions:
   contents: write
@@ -31,8 +38,20 @@ jobs:
       - name: Publicar a release
         env:
           GH_TOKEN: ${{ github.token }}
-          TAG: ${{ github.ref_name }}
+          ENTRADA: ${{ inputs.versao }}
+          REF_NAME: ${{ github.ref_name }}
         run: |
+          # disparo manual usa a versão informada; push de tag usa a própria tag
+          TAG="${ENTRADA:-$REF_NAME}"
+          case "$TAG" in
+            v*) ;;
+            *) echo "A versão precisa começar com 'v' (recebi: $TAG)"; exit 1 ;;
+          esac
+
+          # no disparo manual a tag ainda não existe: criamos no commit atual
+          ALVO=""
+          [ -n "$ENTRADA" ] && ALVO="--target $GITHUB_SHA"
+
           cat > notas.md <<'EOF'
           ## Instalar no Linux Mint / Ubuntu
 
@@ -55,7 +74,7 @@ jobs:
           `python3 -m cifrana --help` mostra as opções de terminal.
           EOF
 
-          gh release create "$TAG" dist/*.deb \
+          gh release create "$TAG" dist/*.deb $ALVO \
             --title "Cifrana $TAG" \
             --notes-file notas.md \
             || gh release upload "$TAG" dist/*.deb --clobber
