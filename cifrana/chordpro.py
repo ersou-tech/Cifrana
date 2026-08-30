@@ -170,27 +170,25 @@ def header_lines(song: Song, semitones: int = 0, source: bool = True) -> list[st
     return [line for line in candidates if line]
 
 
-def song_to_chordpro(
-    song: Song,
+def render_body(
+    lines: list[RawLine],
     *,
     transpose: int = 0,
     chorus_directives: bool = False,
     keep_tabs: bool = True,
-    source: bool = True,
-) -> str:
-    """Renderiza a cifra como texto ChordPro."""
+    prefer_flats: bool = False,
+) -> list[str]:
+    """Converte as linhas da cifra no corpo do ChordPro, sem o cabeçalho.
+
+    Serve tanto para a cifra recém-baixada do CifraClub quanto para o texto que
+    o usuário edita na prévia — os dois são acordes acima da letra.
+    """
 
     semitones = transpose % 12
-    prefer_flats = prefer_flats_for(song.key, semitones) if semitones else False
-
-    lines = song.lines
     kinds = [classify(line) for line in lines]
     tab_indices = _tab_blocks(kinds)
 
-    out: list[str] = header_lines(song, semitones, source)
-    if out:
-        out.append("")
-
+    out: list[str] = []
     in_tab = False
     in_chorus = False
     index = 0
@@ -270,6 +268,35 @@ def song_to_chordpro(
         out.append("{end_of_tab}")
     if in_chorus:
         out.append("{end_of_chorus}")
+
+    return out
+
+
+def song_to_chordpro(
+    song: Song,
+    *,
+    transpose: int = 0,
+    chorus_directives: bool = False,
+    keep_tabs: bool = True,
+    source: bool = True,
+) -> str:
+    """Renderiza a cifra como texto ChordPro."""
+
+    semitones = transpose % 12
+    prefer_flats = prefer_flats_for(song.key, semitones) if semitones else False
+
+    out: list[str] = header_lines(song, semitones, source)
+    if out:
+        out.append("")
+    out.extend(
+        render_body(
+            song.lines,
+            transpose=semitones,
+            chorus_directives=chorus_directives,
+            keep_tabs=keep_tabs,
+            prefer_flats=prefer_flats,
+        )
+    )
 
     # colapsa linhas em branco repetidas e remove sobras no fim
     cleaned: list[str] = []

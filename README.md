@@ -146,19 +146,21 @@ próxima vez já abre do jeito que você deixou.
 
 ![O editor de cifras](docs/editor.png)
 
-Duas abas:
+Duas abas, mostrando a mesma cifra de formas diferentes — **as duas são
+editáveis**, e cada uma é refeita a partir da outra quando você troca de aba.
 
-**Prévia** — a cifra como ela fica no SongbookPro: os acordes alinhados **acima
-da letra**, na sílaba certa, com as seções destacadas e as tablaturas
-desenhadas. É a aba que abre primeiro, para conferir o resultado.
+**Prévia** — a cifra como ela fica no SongbookPro: acordes alinhados **acima da
+letra**, na sílaba certa, seções destacadas e tablaturas desenhadas. É a aba que
+abre primeiro, e dá para editar direto nela: trocar o nome de um acorde,
+empurrá-lo com espaços para outra sílaba, corrigir a letra, apagar ou
+acrescentar linhas. Um rótulo de trecho é uma linha entre `[colchetes]`.
 
-**Texto (ChordPro)** — o arquivo de verdade, com os acordes entre `[colchetes]`
-e as diretivas entre `{chaves}`. É aqui que se edita: corrigir um acorde errado,
-apagar uma tablatura que você não usa, acrescentar um `{comment: ...}` com uma
-anotação sua. `Ctrl+Z` desfaz e `Ctrl+S` salva, e a Prévia acompanha o que você
-digita.
+**Texto (ChordPro)** — o arquivo de verdade, com os acordes embutidos e as
+diretivas entre `{chaves}`. Útil para mexer no cabeçalho (título, tom,
+capotraste) ou para conferir exatamente o que vai ser gravado.
 
-Dá para renomear o arquivo no campo de cima.
+`Ctrl+Z` desfaz e `Ctrl+S` salva, nas duas. O nome do arquivo se muda no campo
+de cima.
 
 - **Salvar** guarda o texto para a exportação (ainda não grava em disco — isso
   acontece no *Baixar e exportar*).

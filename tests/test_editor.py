@@ -50,6 +50,15 @@ class EditorTest(unittest.TestCase):
         self.app.open_editor()
         return next(iter(self.app.editors.values()))
 
+    def trocar_aba(self, editor, indice):
+        """Troca de aba e deixa o Tk despachar o evento.
+
+        Sem mainloop, o <<NotebookTabChanged>> fica na fila até um update().
+        """
+
+        editor.caderno.select(indice)
+        self.root.update()
+
     def test_abre_com_o_texto_convertido(self):
         editor = self.abrir()
         self.assertEqual(editor.texto_atual(), self.convertida.content)
@@ -115,6 +124,59 @@ class EditorTest(unittest.TestCase):
         self.item.edited = False
         self.app.refresh_item(self.item)
         self.assertEqual(self.item.state_label, "")
+
+
+class EdicaoNaPreviaTest(EditorTest):
+    """Editar na aba Prévia precisa chegar ao arquivo exportado."""
+
+    def test_a_previa_abre_com_o_corpo_da_cifra(self):
+        editor = self.abrir()
+        corpo = editor.previa.get("1.0", "end-1c")
+        self.assertIn("[Primeira Parte]", corpo)
+        self.assertNotIn("{title:", corpo)   # o cabeçalho fica fora
+        self.assertNotIn("[C]", corpo)       # e os acordes não vêm entre colchetes
+
+    def test_trocar_acorde_na_previa_chega_ao_chordpro(self):
+        editor = self.abrir()
+        corpo = editor.previa.get("1.0", "end-1c")
+        numero = next(
+            n for n, linha in enumerate(corpo.splitlines(), start=1)
+            if linha == "G          D"
+        )
+        editor.previa.delete(f"{numero}.0", f"{numero}.end")
+        editor.previa.insert(f"{numero}.0", "Gm         D")
+        editor._fonte = "previa"
+
+        chordpro = editor.texto_atual()
+        self.assertIn("[Gm]", chordpro)
+        self.assertIn("[D]", chordpro)
+
+    def test_edicao_na_previa_marca_e_salva(self):
+        editor = self.abrir()
+        editor.previa.insert("1.0", "[Meu trecho]\n")
+        editor._fonte = "previa"
+        editor.salvar()
+
+        self.assertTrue(self.item.edited)
+        self.assertIn("{comment: Meu trecho}", self.item.content)
+
+    def test_as_abas_se_mantem_em_dia(self):
+        editor = self.abrir()
+        editor.previa.insert("1.0", "[Coda]\nC  G\numa letra\n")
+        editor._fonte = "previa"
+        self.trocar_aba(editor, 1)           # vai para a aba Texto
+        self.assertIn("{comment: Coda}", editor.text.get("1.0", "end-1c"))
+
+        self.trocar_aba(editor, 0)           # e volta para a Prévia
+        self.assertIn("[Coda]", editor.previa.get("1.0", "end-1c"))
+
+    def test_ida_e_volta_pelas_abas_nao_altera_a_cifra(self):
+        editor = self.abrir()
+        antes = editor.texto_atual()
+        for _ in range(3):
+            self.trocar_aba(editor, 0)
+            self.trocar_aba(editor, 1)
+        self.assertEqual(editor.texto_atual(), antes)
 
 
 if __name__ == "__main__":

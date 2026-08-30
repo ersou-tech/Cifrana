@@ -164,3 +164,99 @@ class IdaEVoltaTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class EdicaoNaPreviaTest(unittest.TestCase):
+    """A prévia é editável: o que se digita nela vira ChordPro de volta."""
+
+    def setUp(self):
+        song = parse_print_page(FIXTURE.read_text(encoding="utf-8"), url="https://exemplo/")
+        self.chordpro = converter(song, Options(chorus=True)).content
+        self.cabecalho, _ = preview.dividir(self.chordpro)
+        self.corpo, self.conhecidas = preview.corpo_editavel(self.chordpro)
+
+    def ciclo(self, corpo=None):
+        return preview.para_chordpro(
+            self.cabecalho,
+            self.corpo if corpo is None else corpo,
+            chorus_directives=True,
+            conhecidas=self.conhecidas,
+        )
+
+    def test_o_cabecalho_volta_intacto(self):
+        volta = self.ciclo()
+        for linha in self.cabecalho:
+            self.assertIn(linha, volta)
+
+    def test_o_corpo_nao_leva_colchetes_de_acorde(self):
+        self.assertNotIn("[C]", self.corpo)
+        self.assertNotIn("{", self.corpo)
+
+    def test_secoes_aparecem_entre_colchetes(self):
+        self.assertIn("[Primeira Parte]", self.corpo)
+
+    def test_ida_e_volta_e_estavel(self):
+        uma = self.ciclo()
+        cab2, _ = preview.dividir(uma)
+        corpo2, conhecidas2 = preview.corpo_editavel(uma)
+        duas = preview.para_chordpro(
+            cab2, corpo2, chorus_directives=True, conhecidas=conhecidas2
+        )
+        self.assertEqual(uma, duas, "o texto continua mudando a cada volta")
+
+    def test_a_previa_vista_nao_muda_na_volta(self):
+        volta = self.ciclo()
+        self.assertEqual(preview.corpo_editavel(volta)[0], self.corpo)
+
+    def test_trocar_um_acorde_na_previa(self):
+        corpo = self.corpo.replace("G          D", "Gm         D")
+        volta = self.ciclo(corpo)
+        self.assertIn("[Gm]", volta)
+        self.assertIn("[D]", volta)
+
+    def test_corrigir_a_letra_na_previa(self):
+        corpo = self.corpo.replace("Contando ate seis", "Contando ate dez")
+        volta = self.ciclo(corpo)
+        # o acorde cai no meio da palavra, então a letra volta partida pelo
+        # colchete: o que precisa sobreviver é o texto sem os acordes
+        sem_acordes = preview.como_texto(volta)
+        self.assertIn("Contando ate dez", sem_acordes)
+
+    def test_refrao_sobrevive_a_ida_e_volta(self):
+        volta = self.ciclo()
+        self.assertIn("{start_of_chorus: Refrão}", volta)
+        self.assertIn("{end_of_chorus}", volta)
+
+    def test_tablatura_sobrevive_a_ida_e_volta(self):
+        volta = self.ciclo()
+        self.assertIn("{start_of_tab}", volta)
+        self.assertIn("E|-----------------------------------------|", volta)
+
+    def test_verso_que_parece_acorde_sobrevive(self):
+        """Um verso como "Am" é indistinguível de um acorde olhando a linha.
+
+        O que resolve é a origem: se a prévia o mostrou como letra, ele
+        continua letra depois da volta.
+        """
+
+        original = "{title: X}\n\n{comment: Parte}\n[C]uma linha\nAm\n"
+        cabecalho, _ = preview.dividir(original)
+        corpo, conhecidas = preview.corpo_editavel(original)
+        self.assertIn("Am", corpo)
+
+        volta = preview.para_chordpro(cabecalho, corpo, conhecidas=conhecidas)
+        self.assertIn("\nAm\n", volta, "o verso virou acorde na volta")
+        self.assertNotIn("[Am]", volta)
+
+    def test_linha_nova_que_so_tem_acordes_e_lida_como_acordes(self):
+        """Sem histórico, a linha é classificada pelo que ela parece."""
+
+        corpo = self.corpo + "\n\n[Coda]\nC  Am\n"
+        volta = self.ciclo(corpo)
+        self.assertIn("[C]", volta)
+        self.assertIn("[Am]", volta)
+
+    def test_linha_de_acordes_nova_e_reconhecida(self):
+        corpo = self.corpo + "\n\n[Coda]\nC  G  Am\numa letra qualquer\n"
+        volta = self.ciclo(corpo)
+        self.assertIn("[C]uma letra qualquer", volta.replace("[G]", "").replace("[Am]", ""))

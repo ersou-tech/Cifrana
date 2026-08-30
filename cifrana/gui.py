@@ -11,6 +11,7 @@ import bisect
 import json
 import os
 import queue
+import re
 import subprocess
 import sys
 import threading
@@ -28,7 +29,7 @@ except ImportError as exc:  # pragma: no cover - depende do ambiente
         "    sudo apt install python3-tk\n"
     ) from exc
 
-from . import __version__, highlight, preview
+from . import __version__, highlight, preview, sheet
 from .convert import Options, fetch_and_render
 from .exporter import make_zip, safe_filename, write_song
 from .fetcher import Fetcher, FetchError
@@ -107,7 +108,7 @@ class CifranaApp:
         outer = ttk.Frame(self.root, padding=12)
         outer.pack(fill="both", expand=True)
         outer.columnconfigure(0, weight=1)
-        outer.rowconfigure(2, weight=1)
+        outer.rowconfigure(3, weight=1)
 
         # -- cabeçalho ---------------------------------------------------
         header = ttk.Frame(outer)
@@ -717,6 +718,12 @@ class EditorCifra(tk.Toplevel):
         self.app = app
         self.item = item
         self._agendado: str | None = None
+        self._agendado_previa: str | None = None
+        self._pronto = False           # evita sincronizar durante a montagem
+        self._fonte = "texto"          # qual aba foi editada por último
+        self._cabecalho: list[str] = []
+        self._conhecidas = preview.Conhecidas()
+        self._previa_aplicada = ""
         self._original = item.content or ""
         self._salvo = self._original
         self._nome_salvo = item.filename or ""
@@ -726,7 +733,9 @@ class EditorCifra(tk.Toplevel):
         self.minsize(620, 460)
 
         self._build()
+        self._pronto = True
         self.substituir_texto(self._original, self._nome_salvo)
+        self.caderno.select(0)
 
         self.protocol("WM_DELETE_WINDOW", self.fechar)
         self.bind("<Control-s>", lambda _e: (self.salvar(), "break")[1])
@@ -736,14 +745,14 @@ class EditorCifra(tk.Toplevel):
         outer = ttk.Frame(self, padding=10)
         outer.pack(fill="both", expand=True)
         outer.columnconfigure(0, weight=1)
-        outer.rowconfigure(2, weight=1)
+        outer.rowconfigure(3, weight=1)
 
         ttk.Label(outer, text=self.item.label, style="Titulo.TLabel").grid(
             row=0, column=0, sticky="w"
         )
 
         linha = ttk.Frame(outer)
-        linha.grid(row=1, column=0, sticky="ew", pady=(8, 10))
+        linha.grid(row=1, column=0, sticky="ew", pady=(8, 4))
         linha.columnconfigure(1, weight=1)
         ttk.Label(linha, text="Arquivo:").grid(row=0, column=0)
         self.file_var = tk.StringVar()
@@ -751,13 +760,17 @@ class EditorCifra(tk.Toplevel):
         entrada.grid(row=0, column=1, sticky="ew", padx=8)
         entrada.bind("<KeyRelease>", lambda _e: self._atualizar_status())
 
+        # o cabeçalho não entra na prévia editável, mas continua à vista
+        self.info = ttk.Label(outer, text="", style="Sub.TLabel", wraplength=840)
+        self.info.grid(row=2, column=0, sticky="w", pady=(0, 8))
+
         base = tkfont.nametofont("TkFixedFont")
         fonte = tkfont.Font(family=base.cget("family"), size=11)
         negrito = tkfont.Font(family=base.cget("family"), size=11, weight="bold")
         titulo = tkfont.Font(family=base.cget("family"), size=14, weight="bold")
 
         caderno = ttk.Notebook(outer)
-        caderno.grid(row=2, column=0, sticky="nsew")
+        caderno.grid(row=3, column=0, sticky="nsew")
         caderno.bind("<<NotebookTabChanged>>", self._ao_trocar_aba)
         self.caderno = caderno
 
@@ -767,8 +780,8 @@ class EditorCifra(tk.Toplevel):
         caderno.add(aba_texto, text="  Texto (ChordPro)  ")
 
         # -- prévia: como a cifra fica na tela do SongbookPro ---------------
-        self.previa = self._area_de_texto(aba_previa, fonte)
-        self.previa.configure(state="disabled", cursor="arrow")
+        self.previa = self._area_de_texto(aba_previa, fonte, undo=True)
+        self.previa.bind("<KeyRelease>", self._ao_digitar_previa)
         self.previa.tag_configure(preview.TITULO, font=titulo, spacing3=2)
         self.previa.tag_configure(preview.SUBTITULO, foreground="#5a5a5a", font=negrito)
         self.previa.tag_configure(preview.INFO, foreground="#5a5a5a")
@@ -777,6 +790,7 @@ class EditorCifra(tk.Toplevel):
         )
         self.previa.tag_configure(preview.ACORDES, foreground="#a51d2d", font=negrito)
         self.previa.tag_configure(preview.TAB, foreground="#5a5a5a")
+        self.previa.tag_configure("secao_previa", foreground="#1a5fb4", font=negrito)
 
         # -- texto: o arquivo que vai ser gravado ---------------------------
         self.text = self._area_de_texto(aba_texto, fonte, undo=True)
@@ -788,17 +802,17 @@ class EditorCifra(tk.Toplevel):
         ttk.Label(
             outer,
             text=(
-                "A Prévia mostra como a cifra fica no SongbookPro. Para mudar algo, "
-                "use a aba Texto: acordes entre [colchetes] e diretivas entre "
-                "{chaves}. Ctrl+Z desfaz, Ctrl+S salva."
+                "Edite direto na Prévia: mova um acorde com espaços, troque o nome, "
+                "corrija a letra. A aba Texto mostra o arquivo ChordPro "
+                "correspondente. Ctrl+Z desfaz, Ctrl+S salva."
             ),
             style="Sub.TLabel",
             wraplength=820,
             justify="left",
-        ).grid(row=3, column=0, sticky="w", pady=(8, 0))
+        ).grid(row=4, column=0, sticky="w", pady=(8, 0))
 
         rodape = ttk.Frame(outer)
-        rodape.grid(row=4, column=0, sticky="ew", pady=(10, 0))
+        rodape.grid(row=5, column=0, sticky="ew", pady=(10, 0))
         ttk.Button(rodape, text="Salvar", style="Acao.TButton", command=self.salvar).pack(
             side="left"
         )
@@ -827,6 +841,10 @@ class EditorCifra(tk.Toplevel):
 
     # -- conteúdo ------------------------------------------------------
     def texto_atual(self) -> str:
+        """O ChordPro atual, venha ele da aba Texto ou da Prévia."""
+
+        if self._pronto and self._fonte == "previa":
+            self._aplicar_previa()
         return self.text.get("1.0", "end-1c")
 
     def substituir_texto(self, conteudo: str, nome: str) -> None:
@@ -838,8 +856,9 @@ class EditorCifra(tk.Toplevel):
         self._original = conteudo
         self._salvo = conteudo
         self._nome_salvo = nome
+        self._fonte = "texto"
         self._destacar()
-        self._atualizar_previa()
+        self._refazer_previa()
         self._atualizar_status()
 
     @property
@@ -849,24 +868,92 @@ class EditorCifra(tk.Toplevel):
         return self.texto_atual() != self._salvo or self.file_var.get().strip() != self._nome_salvo
 
     # -- prévia --------------------------------------------------------
+    # As duas abas mostram a mesma cifra de formas diferentes. "_fonte" guarda
+    # qual delas foi editada por último; a outra é refeita a partir dela.
     def _ao_trocar_aba(self, _event=None) -> None:
-        """Ao voltar para a Prévia, redesenha a partir do texto atual."""
-
+        if not self._pronto:
+            return
         if self.caderno.index("current") == 0:
-            self._atualizar_previa()
+            if self._fonte == "texto":
+                self._refazer_previa()
+            self._fonte = "previa"
+        else:
+            if self._fonte == "previa":
+                self._aplicar_previa()
+            self._fonte = "texto"
 
-    def _atualizar_previa(self) -> None:
-        self.previa.configure(state="normal")
+    def _refazer_previa(self) -> None:
+        """Desenha a prévia a partir do ChordPro da aba Texto."""
+
+        chordpro = self.text.get("1.0", "end-1c")
+        self._cabecalho, _ = preview.dividir(chordpro)
+        corpo, self._conhecidas = preview.corpo_editavel(chordpro)
+
         self.previa.delete("1.0", "end")
-        for bloco in preview.render(self.texto_atual()):
-            # o refrão entra recuado, para se distinguir das estrofes
-            recuo = "  " if bloco.refrao and bloco.tipo != preview.SECAO else ""
-            texto = f"{recuo}{bloco.texto}\n" if bloco.texto else "\n"
-            if bloco.tipo == preview.LETRA or bloco.tipo == preview.VAZIO:
-                self.previa.insert("end", texto)
+        self.previa.insert("1.0", corpo)
+        self.previa.edit_reset()
+        self._previa_aplicada = corpo
+        self._destacar_previa()
+
+        informacoes = [
+            bloco.texto
+            for bloco in preview.render("\n".join(self._cabecalho))
+            if bloco.tipo == preview.INFO
+        ]
+        self.info.configure(text=" · ".join(informacoes))
+
+    def _aplicar_previa(self) -> bool:
+        """Refaz o ChordPro a partir do que foi editado na prévia.
+
+        Devolve se houve mudança de fato.
+        """
+
+        corpo = self.previa.get("1.0", "end-1c")
+        if corpo == self._previa_aplicada:
+            return False
+
+        chordpro = preview.para_chordpro(
+            self._cabecalho,
+            corpo,
+            chorus_directives=self.app.chorus_var.get(),
+            keep_tabs=True,  # o que está na prévia fica; descartar é escolha do download
+            conhecidas=self._conhecidas,
+        )
+        self.text.delete("1.0", "end")
+        self.text.insert("1.0", chordpro)
+        self._previa_aplicada = corpo
+        self._destacar()
+        return True
+
+    def _ao_digitar_previa(self, _event=None) -> None:
+        self._fonte = "previa"
+        if self._agendado_previa is not None:
+            self.after_cancel(self._agendado_previa)
+        self._agendado_previa = self.after(300, self._redestacar_previa)
+
+    def _redestacar_previa(self) -> None:
+        self._agendado_previa = None
+        self._destacar_previa()
+        self._atualizar_status()
+
+    def _destacar_previa(self) -> None:
+        """Colore acordes, rótulos de trecho e tablatura, linha a linha."""
+
+        for marcador in (preview.ACORDES, preview.TAB, "secao_previa"):
+            self.previa.tag_remove(marcador, "1.0", "end")
+
+        for numero, linha in enumerate(self.previa.get("1.0", "end-1c").splitlines(), start=1):
+            if not linha.strip():
+                continue
+            if re.match(r"^\s*\[[^\[\]]+\]\s*$", linha):
+                marcador = "secao_previa"
+            elif sheet.e_linha_de_acordes(linha):
+                marcador = preview.ACORDES
+            elif "|" in linha and linha.count("-") >= 3:
+                marcador = preview.TAB
             else:
-                self.previa.insert("end", texto, bloco.tipo)
-        self.previa.configure(state="disabled")
+                continue
+            self.previa.tag_add(marcador, f"{numero}.0", f"{numero}.end")
 
     # -- destaque ------------------------------------------------------
     def _ao_digitar(self, _event=None) -> None:
@@ -876,8 +963,9 @@ class EditorCifra(tk.Toplevel):
 
     def _redestacar(self) -> None:
         self._agendado = None
+        self._fonte = "texto"
         self._destacar()
-        self._atualizar_previa()
+        self._refazer_previa()
         self._atualizar_status()
 
     def _destacar(self) -> None:
@@ -921,7 +1009,7 @@ class EditorCifra(tk.Toplevel):
 
         self.app.refresh_item(self.item)
         self.app._on_status(f"{self.item.label}: alterações guardadas para a exportação.")
-        self._atualizar_previa()
+        self._refazer_previa()
         self._atualizar_status()
 
     def recarregar(self) -> None:

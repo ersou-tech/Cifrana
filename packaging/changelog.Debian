@@ -1,3 +1,11 @@
+cifrana (0.4.0) stable; urgency=low
+
+  * A previa agora e editavel: da para trocar um acorde, mover o acorde com
+    espacos ou corrigir a letra sem lidar com colchetes.
+  * As duas abas ficam sempre em dia, uma refeita a partir da outra.
+
+ -- Elvis Ricardo de Souza <elvisricardodesouza2@gmail.com>  Sun, 30 Aug 2026 18:05:00 -0300
+
 cifrana (0.3.0) stable; urgency=low
 
   * O editor ganhou uma aba de previa, que mostra a cifra como ela fica no

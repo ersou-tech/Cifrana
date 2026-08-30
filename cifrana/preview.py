@@ -9,7 +9,7 @@ Fica separado da interface para poder ser testado sem abrir janela nenhuma.
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 TITULO = "titulo"
 SUBTITULO = "subtitulo"
@@ -94,8 +94,12 @@ def _rotulo_diretiva(nome: str, valor: str) -> str:
     return f"{rotulo}: {valor}"
 
 
-def render(chordpro: str) -> list[Bloco]:
-    """Converte o texto ChordPro em blocos prontos para exibição."""
+def render(chordpro: str, *, ja_comecou: bool = False) -> list[Bloco]:
+    """Converte o texto ChordPro em blocos prontos para exibição.
+
+    ``ja_comecou`` diz que o cabeçalho já foi consumido em outro lugar, então
+    todo comentário daqui em diante é rótulo de trecho, e não informação.
+    """
 
     blocos: list[Bloco] = []
     metadados: list[str] = []
@@ -103,7 +107,7 @@ def render(chordpro: str) -> list[Bloco]:
     em_refrao = False
     # comentários antes da primeira linha de música são cabeçalho (afinação,
     # ritmo, fonte); depois dela são rótulos de trecho ("Refrão", "Solo")
-    comecou_a_musica = False
+    comecou_a_musica = ja_comecou
 
     def despejar_metadados() -> None:
         if not metadados:
@@ -198,3 +202,92 @@ def como_texto(chordpro: str) -> str:
         prefixo = "  " if bloco.refrao and bloco.tipo != SECAO else ""
         linhas.append(prefixo + bloco.texto if bloco.texto else "")
     return "\n".join(linhas)
+
+
+# ---------------------------------------------------------------------------
+# edição na própria prévia
+# ---------------------------------------------------------------------------
+
+def dividir(chordpro: str) -> tuple[list[str], list[str]]:
+    """Separa as diretivas de cabeçalho do corpo da cifra.
+
+    O cabeçalho é a sequência de diretivas do começo do arquivo, até a primeira
+    linha em branco. Ele é preservado palavra por palavra na ida e na volta, em
+    vez de ser remontado — assim nada se perde no caminho.
+    """
+
+    linhas = chordpro.splitlines()
+    fim = 0
+    for indice, linha in enumerate(linhas):
+        if not linha.strip() or not _DIRETIVA_RE.match(linha):
+            break
+        fim = indice + 1
+    return linhas[:fim], linhas[fim:]
+
+
+@dataclass
+class Conhecidas:
+    """As linhas que a prévia gerou, com o papel de cada uma.
+
+    Serve para a volta não precisar adivinhar o que já se sabe.
+    """
+
+    acordes: set[str] = field(default_factory=set)
+    letras: set[str] = field(default_factory=set)
+
+
+def corpo_editavel(chordpro: str) -> tuple[str, Conhecidas]:
+    """O corpo da cifra como texto editável, com acordes acima da letra."""
+
+    _, corpo = dividir(chordpro)
+    linhas: list[str] = []
+    conhecidas = Conhecidas()
+
+    for bloco in render("\n".join(corpo), ja_comecou=True):
+        if bloco.tipo == SECAO:
+            linhas.append(f"[{bloco.texto}]")
+        elif bloco.tipo == VAZIO:
+            linhas.append("")
+        else:
+            # sem recuo no refrão: o espaço viraria parte da letra na volta
+            linhas.append(bloco.texto)
+            if bloco.tipo == ACORDES:
+                conhecidas.acordes.add(bloco.texto)
+            elif bloco.tipo == LETRA and bloco.texto.strip():
+                conhecidas.letras.add(bloco.texto)
+
+    # sem linhas em branco nas pontas: a separação do cabeçalho é reposta em
+    # para_chordpro, e contá-la aqui também faria o texto crescer a cada volta
+    while linhas and not linhas[0].strip():
+        linhas.pop(0)
+    while linhas and not linhas[-1].strip():
+        linhas.pop()
+
+    return "\n".join(linhas), conhecidas
+
+
+def para_chordpro(
+    cabecalho: list[str],
+    corpo: str,
+    *,
+    chorus_directives: bool = False,
+    keep_tabs: bool = True,
+    conhecidas: "Conhecidas | None" = None,
+) -> str:
+    """Refaz o ChordPro a partir do corpo editado na prévia."""
+
+    from . import sheet
+    from .chordpro import render_body
+
+    conhecidas = conhecidas or Conhecidas()
+    linhas = render_body(
+        sheet.linhas_de_cifra(corpo, conhecidas.acordes, conhecidas.letras),
+        chorus_directives=chorus_directives,
+        keep_tabs=keep_tabs,
+    )
+
+    partes = [linha for linha in cabecalho]
+    if partes and linhas:
+        partes.append("")
+    partes.extend(linhas)
+    return "\n".join(partes).rstrip() + "\n"
