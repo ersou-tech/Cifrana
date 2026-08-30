@@ -1,0 +1,92 @@
+.TH CIFRANA 1 "agosto de 2026" "cifrana 0.1.0" "Manual do Usuario"
+.SH NOME
+cifrana \- baixa cifras do CifraClub e exporta em ChordPro para o SongbookPro
+.SH SINOPSE
+.B cifrana
+[\fIOPCOES\fR] [\fIURL\fR...]
+.br
+.B cifrana-gui
+.SH DESCRICAO
+O \fBcifrana\fR baixa cifras do site CifraClub e as converte para ChordPro,
+formato que o SongbookPro importa nativamente.
+.PP
+O CifraClub escreve os acordes em uma linha acima da letra; o ChordPro os
+espera embutidos entre colchetes na propria linha. A conversao e posicional:
+cada acorde e inserido na coluna em que aparecia, preservando o alinhamento
+com a silaba.
+.PP
+\fBcifrana-gui\fR abre a interface grafica, com busca integrada.
+.SH OPCOES
+.TP
+.BR \-o ", " \-\-saida " " \fIPASTA\fR
+Pasta de saida (padrao: ./cifras).
+.TP
+.BR \-\-zip " " \fIARQUIVO\fR
+Gera tambem um arquivo .zip com todas as cifras exportadas.
+.TP
+.BR \-\-stdout
+Imprime o ChordPro no terminal em vez de gravar arquivos.
+.TP
+.BR \-\-lista " " \fIARQUIVO\fR
+Le uma URL por linha de um arquivo texto. O caractere # inicia comentario.
+.TP
+.BR \-\-artista " " \fIURL\fR
+Baixa as musicas listadas na pagina de um artista. Pode ser repetida.
+.TP
+.BR \-\-transpor " " \fIN\fR
+Transpoe N semitons (por exemplo 2 ou \-3).
+.TP
+.BR \-\-refrao
+Usa {start_of_chorus} e {end_of_chorus} nos refroes.
+.TP
+.BR \-\-sem\-tabs
+Descarta os blocos de tablatura.
+.TP
+.BR \-\-sem\-fonte
+Nao inclui o comentario com a URL de origem.
+.TP
+.BR \-\-nome " " \fIMODELO\fR
+Modelo do nome do arquivo. Campos: {artist}, {title}, {key}.
+.TP
+.BR \-\-ext " " \fIEXTENSAO\fR
+Extensao dos arquivos gerados (padrao: .cho).
+.TP
+.BR \-\-ascii
+Remove acentos dos nomes de arquivo.
+.TP
+.BR \-\-sobrescrever
+Sobrescreve arquivos existentes em vez de criar "(2)".
+.TP
+.BR \-\-intervalo " " \fISEGUNDOS\fR
+Espera entre requisicoes (padrao: 1.0).
+.TP
+.BR \-\-cache " " \fIPASTA\fR ", " \-\-sem\-cache ", " \-\-recarregar
+Controlam o cache do HTML baixado.
+.TP
+.BR \-\-gui
+Abre a interface grafica.
+.TP
+.BR \-v ", " \-\-verboso
+Mostra mais detalhes.
+.SH EXEMPLOS
+.TP
+Uma musica:
+.B cifrana legiao\-urbana/tempo\-perdido
+.TP
+Varias, com zip:
+.B cifrana legiao\-urbana/tempo\-perdido djavan/oceano \-\-zip cifras.zip
+.TP
+Tudo que aparece na pagina de um artista:
+.B cifrana \-\-artista https://www.cifraclub.com.br/legiao\-urbana/
+.SH ARQUIVOS
+.TP
+.I ~/.config/cifrana/config.json
+Preferencias da interface grafica.
+.TP
+.I ~/.cache/cifrana/
+Cache das paginas baixadas.
+.SH OBSERVACOES
+As cifras sao de seus autores e editoras. Use apenas para fins pessoais e
+respeite os termos de uso do site.
+.SH AUTOR
+Elvis Ricardo de Souza.

@@ -1,0 +1,8 @@
+cifrana (0.1.0) stable; urgency=low
+
+  * Primeira versao.
+  * Interface grafica com busca integrada ao CifraClub.
+  * Comando de terminal para uso em lote.
+  * Exportacao em ChordPro para o SongbookPro.
+
+ -- Elvis Ricardo de Souza <elvisricardodesouza2@gmail.com>  Sun, 30 Aug 2026 12:00:00 -0300

@@ -1,0 +1,13 @@
+[Desktop Entry]
+Type=Application
+Version=1.0
+Name=Cifrana
+GenericName=Exportador de cifras
+Comment=Baixa cifras do CifraClub e exporta para o SongbookPro
+Exec=cifrana-gui
+Icon=cifrana
+Terminal=false
+Categories=AudioVideo;Audio;Music;Utility;
+Keywords=cifra;cifraclub;songbookpro;chordpro;acordes;violao;musica;
+StartupNotify=true
+StartupWMClass=Cifrana

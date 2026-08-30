@@ -157,6 +157,13 @@ def build_argument_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="ignora o cache e baixa de novo",
     )
+    parser.add_argument(
+        "--gui",
+        "--interface",
+        dest="gui",
+        action="store_true",
+        help="abre a interface gráfica",
+    )
     parser.add_argument("-v", "--verboso", action="store_true", help="mostra mais detalhes")
     parser.add_argument("--version", action="version", version=f"cifrana {__version__}")
     return parser
@@ -222,6 +229,12 @@ def convert_one(url: str, args: argparse.Namespace, fetcher: Fetcher) -> tuple[s
 
 def main(argv: list[str] | None = None) -> int:
     args = build_argument_parser().parse_args(argv)
+
+    if args.gui:
+        from .gui import main as gui_main
+
+        return gui_main()
+
     logging.basicConfig(
         level=logging.DEBUG if args.verboso else logging.INFO,
         format="%(levelname)s: %(message)s",

@@ -1,0 +1,19 @@
+Package: cifrana
+Version: @VERSAO@
+Section: sound
+Priority: optional
+Architecture: all
+Depends: python3 (>= 3.9), python3-tk
+Installed-Size: @TAMANHO@
+Maintainer: Elvis Ricardo de Souza <elvisricardodesouza2@gmail.com>
+Homepage: https://github.com/ersou-tech/Cifrana
+Description: Cifras do CifraClub prontas para o SongbookPro
+ O Cifrana baixa cifras do CifraClub e as exporta em ChordPro, formato que o
+ SongbookPro importa nativamente.
+ .
+ O CifraClub escreve os acordes numa linha acima da letra; o SongbookPro os
+ espera embutidos na propria linha. A conversao e posicional, entao cada
+ acorde cai exatamente na silaba certa.
+ .
+ Traz interface grafica com busca integrada (nao e preciso copiar links) e
+ tambem um comando de terminal para uso em lote.

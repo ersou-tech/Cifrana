@@ -1,0 +1,43 @@
+name: release
+
+# Publica o .deb quando uma tag "v..." é enviada:
+#     git tag v0.1.0 && git push origin v0.1.0
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  publicar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Rodar os testes
+        run: python3 -m unittest discover -s tests -t .
+
+      - name: Montar o .deb
+        run: ./packaging/build-deb.sh
+
+      - name: Conferir a instalação
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y ./dist/cifrana_*.deb
+          cifrana --version
+
+      - name: Publicar a release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          gh release create "$TAG" dist/*.deb \
+            --title "Cifrana $TAG" \
+            --notes "Baixe o .deb abaixo e instale com dois cliques (GDebi) ou com:
+
+              sudo apt install ./cifrana_*.deb
+
+            Depois procure por **Cifrana** no menu, ou use \`cifrana --help\` no terminal." \
+            || gh release upload "$TAG" dist/*.deb --clobber

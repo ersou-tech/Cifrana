@@ -13,3 +13,6 @@ venv/
 *.chopro
 *.pro
 *.zip
+
+# pacotes gerados
+/dist/

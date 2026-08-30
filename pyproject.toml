@@ -20,6 +20,7 @@ dependencies = []
 
 [project.scripts]
 cifrana = "cifrana.cli:main"
+cifrana-gui = "cifrana.gui:main"
 
 [tool.setuptools]
 packages = ["cifrana"]

@@ -1,0 +1,43 @@
+name: testes
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+
+jobs:
+  testes:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python: ["3.9", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+
+      - name: Rodar os testes
+        run: python -m unittest discover -s tests -t . -v
+
+  pacote:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Montar o .deb
+        run: ./packaging/build-deb.sh
+
+      - name: Instalar e conferir
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y ./dist/cifrana_*.deb
+          cifrana --version
+          cifrana --help > /dev/null
+          python3 -c "import cifrana.gui" # a GUI importa com o python3-tk da dependência
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cifrana-deb
+          path: dist/*.deb
